@@ -1,0 +1,75 @@
+<html>
+  <head>
+    <title>Mine It Out!</title>
+  </head>
+  <body>
+    <div style="text-align:center;">
+      <h2 style="font-size:40px">Mine It Out!</h2>
+      <h1 id="remaining" style="font-size:72px">0%</h1>
+      <div>
+        <input id="mine-button" type="button" disabled=true value="Mine" />
+        <input id="new-pick-button" type="button" value="New Pick" />
+      </div>
+    </div>
+    <script>
+      function updateProgress(progress) {
+        const remainingIndicator = document.getElementById("remaining");
+        const percent = (progress.totalMined / progress.goal) * 100;
+        const text = `${percent.toFixed(3)}%`;
+        remainingIndicator.innerHTML = text;
+      }
+
+      const mineButton = document.getElementById("mine-button");
+      const newPickButton = document.getElementById("new-pick-button");
+
+      let pickId = "";
+      
+      async function getPick() {
+        const result = await fetch(
+          "https://inec0roe58.execute-api.us-east-1.amazonaws.com/picks/new",
+          { method: "POST" }
+        );
+        if (result.ok) {
+          const body = await result.json();
+          // console.log(body);
+          mineButton.disabled = false;
+          mineButton.value = "Mine";
+          pickId = body.pickId;
+        }
+      }
+
+      newPickButton.addEventListener("click", getPick);
+
+      async function mine() {
+        if (pickId === "") {
+          throw new Error();
+        }
+        const result = await fetch(
+          "https://inec0roe58.execute-api.us-east-1.amazonaws.com/picks/mine",
+          { method: "POST", body: JSON.stringify({ pickId }) }
+        );
+        if (result.ok) {
+          const body = await result.json();
+          // console.log(body);
+          if (body.message === "Pick broken") {
+            pickId = "";
+            mineButton.disabled = true;
+            mineButton.value = "Pick Broken";
+            return;
+          }
+          updateProgress(body.progress);
+        }
+      }
+
+      mineButton.addEventListener("click", mine);
+
+      async function setup() {
+        mineButton.disabled = pickId === "";
+        const result = await fetch("https://inec0roe58.execute-api.us-east-1.amazonaws.com/mine");
+        const body = await result.json();
+        updateProgress(body.progress);
+      }
+      setup();
+    </script>
+  </body>
+</html>
